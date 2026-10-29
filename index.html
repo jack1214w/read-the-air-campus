@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;font-size:14px;font-family:system-ui,sans-serif}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<title>讀空氣校園系列</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Layout: 一欄窄版「作業簿」— 頂部方格進度、舞台畫布、提示列。淺色 = 綠格作業簿 + 紅筆；深色 = 黑板 + 粉筆 */
+:root{
+  --bg:#e9efe8;
+  --paper:#fbfcf7;
+  --grid:#d3e6d1;
+  --line:#a9c7a7;
+  --ink:#1c2420;
+  --muted:#5d6b62;
+  --red:#cf3426;
+  --display:"Huninn","Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101a15; --paper:#1d3327; --grid:#284636; --line:#3f6650;
+    --ink:#eef0e4; --muted:#a7b9ac; --red:#ff8f7e; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101a15; --paper:#1d3327; --grid:#284636; --line:#3f6650;
+  --ink:#eef0e4; --muted:#a7b9ac; --red:#ff8f7e; color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:var(--body);line-height:1.6}
+.app{max-width:440px;margin:0 auto;padding-block:18px 28px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:12px}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.eyebrow{font-size:12px;letter-spacing:.12em;color:var(--muted);margin:0}
+h1{font-family:var(--display);font-weight:400;font-size:26px;line-height:1.2;margin:2px 0 0;text-wrap:balance}
+.pips{display:grid;grid-template-columns:repeat(10,20px);border-top:1px solid var(--line);border-left:1px solid var(--line)}
+.pip{width:20px;height:20px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+  display:grid;place-items:center;font-size:13px;line-height:1;color:var(--red);font-family:var(--display)}
+.pip.cur{background:var(--grid)}
+.pip.g-f{color:var(--ink)}
+.stage{position:relative;width:100%;max-width:100%;aspect-ratio:360/420;background:var(--paper);
+  border:2px solid var(--ink);border-radius:3px;overflow:hidden}
+canvas{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;display:block;width:100%;height:100%;touch-action:none;cursor:pointer}
+.ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  padding:22px;text-align:center;overflow:auto;
+  background:color-mix(in srgb,var(--paper) 88%,transparent)}
+.ov[hidden]{display:none}
+.ov h2{font-family:var(--display);font-weight:400;margin:0;line-height:1.1}
+.big{font-size:56px;letter-spacing:.04em}
+.sub{font-family:var(--display);font-size:20px;color:var(--red);margin:0}
+.ov p{margin:0;max-width:30ch}
+.desc{color:var(--muted);font-size:14px}
+.q{font-size:13px;letter-spacing:.14em;color:var(--muted);margin:0}
+.lt{font-size:32px}
+.btn{font-family:var(--display);font-size:18px;padding:9px 24px;border:2px solid var(--ink);background:var(--ink);
+  color:var(--paper);border-radius:6px;cursor:pointer}
+.btn:hover{background:var(--red);border-color:var(--red)}
+.btn:focus-visible{outline:3px solid var(--red);outline-offset:3px}
+.stamp{width:96px;height:96px;border:4px solid var(--red);border-radius:50%;color:var(--red);
+  font-family:var(--display);font-size:34px;display:grid;place-items:center;transform:rotate(-12deg);
+  animation:stamp .32s cubic-bezier(.2,1.6,.4,1) both}
+.stamp.f{border-color:var(--ink);color:var(--ink);font-size:28px}
+.stamp.o{font-size:30px}
+@keyframes stamp{from{transform:rotate(-12deg) scale(1.8);opacity:0}to{transform:rotate(-12deg) scale(1);opacity:1}}
+.msg{font-size:16px;font-weight:500}
+.score{font-family:var(--display);font-size:56px;line-height:1;color:var(--red)}
+.score small{font-size:22px}
+.rank{font-family:var(--display);font-size:24px}
+.list{list-style:none;margin:0;padding:0;width:100%;max-width:260px;display:grid;gap:2px;font-size:14px;text-align:left}
+.list li{display:grid;grid-template-columns:22px 1fr;gap:8px;border-bottom:1px dashed var(--line);padding-block:2px}
+.list b{font-family:var(--display);font-weight:400;color:var(--red);text-align:center}
+.list .f b{color:var(--ink)}
+.hint{margin:0;font-size:14px;color:var(--muted);min-height:1.6em;text-align:center}
+.foot{margin:0;font-size:12px;color:var(--muted);text-align:center}
+.back{font:inherit;font-size:12px;letter-spacing:.06em;color:var(--red);background:none;border:0;padding:0 8px 0 0;cursor:pointer}
+.back:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+.back[hidden],.pips[hidden],.choices[hidden],.disc[hidden]{display:none}
+.choices{display:grid;gap:8px}
+.cq{margin:0;font-family:var(--display);font-size:16px}
+.choice{font:inherit;font-size:15px;text-align:left;padding:10px 14px;border:2px solid var(--ink);background:var(--paper);color:var(--ink);border-radius:12px;cursor:pointer}
+.choice:hover{border-color:var(--red);color:var(--red)}
+.choice:focus-visible,.series:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+.series-list{display:grid;gap:10px;width:100%;max-width:290px}
+.series{font:inherit;display:grid;gap:1px;text-align:left;padding:10px 16px;border:2px solid var(--ink);background:var(--paper);color:var(--ink);border-radius:8px;cursor:pointer}
+.series:hover{border-color:var(--red)}
+.series .no{font-size:12px;letter-spacing:.12em;color:var(--muted)}
+.series b{font-family:var(--display);font-weight:400;font-size:22px}
+.series:hover b{color:var(--red)}
+.series .tag{font-size:13px;color:var(--muted)}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.ghost:hover{background:transparent;color:var(--red);border-color:var(--red)}
+.disc{border:2px dashed var(--line);padding:10px 14px;border-radius:8px;text-align:left;max-width:30ch;font-size:15px}
+.disc b{display:block;font-family:var(--display);font-weight:400;color:var(--red)}
+.list.wide{max-width:300px}
+.list i{display:block;font-style:normal;font-size:12px;color:var(--muted);line-height:1.5}
+@media (prefers-reduced-motion: reduce){.stamp{animation:none}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="top">
+    <div>
+      <p class="eyebrow"><button class="back" id="back" hidden>← 選單</button><span id="count">讀空氣</span></p>
+      <h1 id="ltitle">選擇系列</h1>
+    </div>
+    <div class="pips" id="pips" aria-label="作答進度"></div>
+  </div>
+  <div class="stage">
+    <canvas id="cv" aria-label="遊戲畫面"></canvas>
+    <div class="ov" id="ov"></div>
+  </div>
+  <div class="choices" id="choices" hidden></div>
+  <p class="hint" id="hint">選一個系列開始</p>
+  <p class="foot">紅色的小人是你。校園日常篇考反應，將心比心篇看見別人的心情。</p>
+</div>
+
+<script>
+(()=>{
+const W=360,H=420,FL=350,SEAT=324;
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const $=id=>document.getElementById(id);
+const FONT='"Huninn","Noto Sans TC","PingFang TC",sans-serif';
+let C={};
+function readColors(){const cs=getComputedStyle(document.documentElement);
+  ['paper','grid','line','ink','muted','red'].forEach(k=>C[k]=cs.getPropertyValue('--'+k).trim());}
+function resize(){const r=cv.getBoundingClientRect(),d=window.devicePixelRatio||1;
+  cv.width=Math.max(1,Math.round(r.width*d));cv.height=Math.max(1,Math.round(r.height*d));}
+new ResizeObserver(resize).observe(cv);
+
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,k)=>a+(b-a)*clamp(k,0,1);
+const hit=(p,x,top,bot,w=26)=>Math.abs(p.x-x)<w&&p.y>top&&p.y<bot;
+
+/* ---------- 繪圖小工具 ---------- */
+function bg(){ctx.fillStyle=C.paper;ctx.fillRect(0,0,W,H);ctx.strokeStyle=C.grid;ctx.lineWidth=1;ctx.beginPath();
+  for(let x=12;x<W;x+=24){ctx.moveTo(x+.5,0);ctx.lineTo(x+.5,H);}
+  for(let y=6;y<H;y+=24){ctx.moveTo(0,y+.5);ctx.lineTo(W,y+.5);}ctx.stroke();}
+function floor(y=FL){ctx.save();ctx.strokeStyle=C.ink;ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();ctx.restore();}
+function person(x,y,o={}){
+  const s=o.s||1,col=o.me?C.red:C.ink,dir=o.face==='left'?-1:1;
+  const legL=22*s,bodyL=27*s,hr=10*s;
+  ctx.save();ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=4*s;ctx.lineCap='round';ctx.lineJoin='round';
+  const bob=o.bob||0;let hip;
+  if(o.seated){hip={x,y:y+bob};ctx.beginPath();ctx.moveTo(hip.x,hip.y);ctx.lineTo(hip.x+dir*13*s,hip.y);ctx.lineTo(hip.x+dir*13*s,o.floor||FL);ctx.stroke();}
+  else{hip={x,y:y-legL+bob};const sw=o.walk!=null?Math.sin(o.walk)*7*s:0;
+    ctx.beginPath();ctx.moveTo(hip.x,hip.y);ctx.lineTo(x-5*s+sw,y);ctx.moveTo(hip.x,hip.y);ctx.lineTo(x+5*s-sw,y);ctx.stroke();}
+  const a=(o.lean||0)*dir;
+  const pt=k=>({x:hip.x+Math.sin(a)*bodyL*k,y:hip.y-Math.cos(a)*bodyL*k});
+  const neck=pt(1),sh=pt(.82);
+  ctx.beginPath();ctx.moveTo(hip.x,hip.y);ctx.lineTo(neck.x,neck.y);ctx.stroke();
+  if(o.apron){ctx.save();ctx.fillStyle=C.paper;ctx.lineWidth=2*s;const p1=pt(.85),p0=pt(.02);ctx.beginPath();
+    ctx.moveTo(p1.x-6*s,p1.y);ctx.lineTo(p1.x+6*s,p1.y);ctx.lineTo(p0.x+9*s,p0.y+5*s);ctx.lineTo(p0.x-9*s,p0.y+5*s);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
+  ctx.beginPath();
+  const arm=o.arm||'down',t=o.t||0,lx=Math.sin(a)*8;
+  const A=(dx,dy)=>{ctx.moveTo(sh.x,sh.y);ctx.lineTo(sh.x+dx*s,sh.y+dy*s);};
+  if(arm==='down'){A(-8+lx,15);A(8+lx,15);}
+  else if(arm==='up'){A(-dir*8,15);A(dir*6,-23);}
+  else if(arm==='wave'){A(-dir*8,15);A(dir*(9+Math.sin(t*10)*6),-19);}
+  else if(arm==='forward'){A(dir*19,-1);A(dir*17,4);}
+  else if(arm==='write'){A(-dir*8,15);A(dir*15,-17);}
+  else if(arm==='cheer'){A(-13,-17);A(13,-17);}
+  else if(arm==='hold'){A(dir*16,5);A(dir*13,10);}
+  ctx.stroke();
+  const hc={x:neck.x+Math.sin(a)*(hr+s),y:neck.y-Math.cos(a)*(hr+s)};
+  ctx.beginPath();ctx.arc(hc.x,hc.y,hr,0,7);ctx.fill();
+  if(o.glasses){ctx.strokeStyle=C.paper;ctx.lineWidth=1.6*s;const gx=hc.x+dir*4*s,gy=hc.y-s;ctx.beginPath();
+    ctx.arc(gx-3.2*s,gy,2.6*s,0,7);ctx.moveTo(gx+5.8*s,gy);ctx.arc(gx+3.2*s,gy,2.6*s,0,7);ctx.stroke();}
+  if(o.hat){ctx.fillStyle=C.paper;ctx.strokeStyle=col;ctx.lineWidth=2*s;ctx.beginPath();ctx.rect(hc.x-hr,hc.y-hr-6*s,hr*2,8*s);ctx.fill();ctx.stroke();}
+  if(o.mask){ctx.fillStyle=C.paper;ctx.fillRect(hc.x+dir*2*s-5*s,hc.y+1.5*s,10*s,5.5*s);}
+  ctx.restore();return hc;
+}
+function desk(x,dir=-1){ctx.save();ctx.strokeStyle=C.ink;ctx.lineWidth=3;ctx.lineCap='round';
+  const a=x+dir*8,b=x+dir*38,top=SEAT-6;ctx.beginPath();
+  ctx.moveTo(a,top);ctx.lineTo(b,top);ctx.moveTo(a+dir*3,top);ctx.lineTo(a+dir*3,FL);ctx.moveTo(b-dir*3,top);ctx.lineTo(b-dir*3,FL);
+  ctx.moveTo(x-dir*7,SEAT+4);ctx.lineTo(x+dir*9,SEAT+4);ctx.moveTo(x-dir*5,SEAT+4);ctx.lineTo(x-dir*5,FL);
+  ctx.moveTo(x-dir*7,SEAT+4);ctx.lineTo(x-dir*7,SEAT-20);ctx.stroke();ctx.restore();}
+function board(){ctx.save();ctx.strokeStyle=C.ink;ctx.lineWidth=3;ctx.strokeRect(16,120,150,86);
+  ctx.strokeStyle=C.muted;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(30,142);ctx.lineTo(96,142);ctx.moveTo(30,160);ctx.lineTo(130,160);ctx.moveTo(30,178);ctx.lineTo(80,178);ctx.stroke();ctx.restore();}
+function roundRect(x,y,w,h,r){r=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function bubble(x,y,text,o={}){
+  const fs=o.size||15;ctx.save();ctx.font=`${fs}px ${FONT}`;
+  const w=ctx.measureText(text).width+20,h=fs+14;
+  const bx=clamp(x-w/2,4,W-w-4),by=Math.max(4,y-h-12);
+  const col=o.me?C.red:C.ink;
+  ctx.fillStyle=C.paper;ctx.strokeStyle=col;ctx.lineWidth=2;
+  roundRect(bx,by,w,h,8);ctx.fill();ctx.stroke();
+  const tx=clamp(x,bx+12,bx+w-12);
+  ctx.beginPath();ctx.moveTo(tx-6,by+h-1);ctx.lineTo(x,y-2);ctx.lineTo(tx+6,by+h-1);ctx.fill();
+  ctx.beginPath();ctx.moveTo(tx-6,by+h);ctx.lineTo(x,y-2);ctx.lineTo(tx+6,by+h);ctx.stroke();
+  ctx.fillStyle=col;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,bx+w/2,by+h/2+1);ctx.restore();
+}
+function mark(x,y,text,o={}){ctx.save();ctx.font=`${o.size||17}px ${FONT}`;ctx.fillStyle=o.me?C.red:(o.muted?C.muted:C.ink);
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,x,y);ctx.restore();}
+function youTag(h,s=1){ctx.save();ctx.fillStyle=C.red;ctx.font=`13px ${FONT}`;ctx.textAlign='center';
+  const y=h.y-16*s-12;ctx.fillText('你',h.x,y);ctx.beginPath();ctx.moveTo(h.x-4,y+4);ctx.lineTo(h.x+4,y+4);ctx.lineTo(h.x,y+9);ctx.fill();ctx.restore();}
+function label(x,y,t){mark(x,y,t,{size:12,muted:1});}
+
+/* ---------- 關卡 ---------- */
+const LV1=[
+{title:'營養午餐打菜',hint:'拖曳紅色的「你」去排隊',time:12,
+ setup(s){s.line=[86,128,170,212,254];s.me={x:305,y:210};s.drag=false;s.cut=-1;},
+ draw(s){floor();
+  ctx.save();ctx.strokeStyle=C.ink;ctx.fillStyle=C.paper;ctx.lineWidth=3;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(12,FL-38);ctx.lineTo(64,FL-38);ctx.moveTo(18,FL-38);ctx.lineTo(18,FL);ctx.moveTo(58,FL-38);ctx.lineTo(58,FL);ctx.stroke();
+  ctx.beginPath();ctx.rect(16,FL-62,22,24);ctx.fill();ctx.stroke();ctx.beginPath();ctx.rect(40,FL-56,22,18);ctx.fill();ctx.stroke();ctx.restore();
+  label(38,FL+18,'餐桶');
+  if(s.t<2.4)bubble(38,FL-66,'下一位～');
+  s.line.forEach((x,i)=>{const h=person(x,FL,{face:'left'});if(s.cut>=0&&i>=s.cut)mark(h.x,h.y-20,'!?');});
+  const me=person(s.me.x,s.me.y,{me:1,face:'left',s:s.drag?1.06:1});
+  if(!s.locked)youTag(me);},
+ down(s,p){if(Math.abs(p.x-s.me.x)<32&&p.y>s.me.y-72&&p.y<s.me.y+12){s.drag=true;s.off={x:s.me.x-p.x,y:s.me.y-p.y};}},
+ move(s,p){if(!s.drag)return;s.me.x=clamp(p.x+s.off.x,20,W-20);s.me.y=clamp(p.y+s.off.y,90,H-10);},
+ up(s){if(!s.drag)return;s.drag=false;if(Math.abs(s.me.y-FL)>50)return;
+  s.me.y=FL;const k=s.line.filter(lx=>lx<s.me.x).length;
+  if(k===s.line.length){s.me.x=s.line[k-1]+42;end('p','乖乖排到隊伍最後面，打菜很順利。');}
+  else{s.cut=k;for(let i=k;i<s.line.length;i++)s.line[i]+=42;s.me.x=s.line[k]-42;
+   end('f',k===0?'你直接衝到餐桶前面，全班都看傻了。':'插隊！後面的同學都在瞪你。');}},
+ timeout(){return['f','你一直站在旁邊發呆，菜都涼了。'];}},
+
+{title:'走廊遇到老師',hint:'點擊畫面：跟老師打招呼',time:0,
+ setup(s){s.tx=410;s.tap=-1;},
+ update(s,dt){s.tx-=72*dt;if(!s.locked&&s.tx<30)end('f','你假裝沒看到，老師就這樣走過去了。',.6);},
+ draw(s){ctx.save();ctx.strokeStyle=C.muted;ctx.lineWidth=2;
+  for(const x of[22,112,202,292]){ctx.strokeRect(x,96,64,92);ctx.beginPath();ctx.moveTo(x+32,96);ctx.lineTo(x+32,188);ctx.stroke();}ctx.restore();
+  floor();
+  const bowing=s.tap>=0&&s.t-s.tap<1.1;
+  const me=person(110,FL,{me:1,face:'right',lean:bowing?.6:0});
+  const th=person(s.tx,FL,{s:1.15,glasses:1,face:'left',walk:s.t*8,arm:'hold'});
+  if(s.tx<W+20&&s.tx>0)label(s.tx,FL+18,'老師');
+  if(s.tap<0)youTag(me);
+  if(s.tap>=0&&s.t-s.tap<1.3)bubble(me.x,me.y-14,'老師好！',{me:1});
+  if(s.g==='p'&&s.t-s.tap>.45)bubble(th.x,th.y-14,'早安～');},
+ down(s){if(s.tap>=0)return;s.tap=s.t;const d=s.tx-110;
+  if(d>115){s.g='f';end('f','太早了，老師還在走廊另一頭，根本沒聽到。',1.3);}
+  else if(d>=22){s.g='p';end('p','時機剛好，老師笑著點點頭。',1.6);}
+  else if(d>-18){s.g='o';end('o','慢了半拍，老師已經快走過去了。',1.3);}
+  else{s.g='f';end('f','老師都走過去了，你才對著背影鞠躬。',1.3);}}},
+
+{title:'老師的冷笑話',hint:'點擊畫面：笑出來',time:6.4,
+ setup(s){s.tap=-1;},
+ draw(s){floor();board();
+  const th=person(70,FL,{s:1.15,glasses:1,face:'right',arm:s.t>2.8&&s.t<4.6?'wave':'down',t:s.t});
+  if(s.t>.4&&s.t<2.8)bubble(th.x+20,th.y-16,'為什麼海水是鹹的？');
+  else if(s.t>=2.8&&s.t<4.8)bubble(th.x+20,th.y-16,'因為魚一直在流汗。');
+  const laughing=s.t>3.5&&s.t<5.4;
+  [175,240,305].forEach((x,i)=>{const me=i===1;
+   const myLaugh=me&&s.tap>=0&&s.t-s.tap<1.6;
+   const l=me?myLaugh:laughing;
+   const h=person(x,SEAT,{seated:1,face:'left',me,bob:l?-Math.abs(Math.sin(s.t*14+i))*3:0});desk(x);
+   if(me){if(s.tap<0)youTag(h);if(myLaugh)mark(h.x,h.y-24,'哈哈哈',{me:1,size:15});}
+   else if(l&&(Math.floor(s.t*3)+i)%2===0)mark(h.x,h.y-24,'哈哈',{size:15});});},
+ down(s){if(s.tap>=0)return;s.tap=s.t;
+  if(s.t<2.8)end('f','老師還沒講到笑點，你就先笑了。',1.4);
+  else if(s.t<=5.4)end('p','跟著大家「哈哈」兩聲，老師講得很開心。',1.6);
+  else end('f','大家都笑完了，你才突然大笑。',1.4);},
+ timeout(){return['f','全班都笑了，只有你面無表情。'];}},
+
+{title:'「還有沒有問題？」',hint:'點擊畫面：舉手發問',time:5.2,
+ setup(s){s.hand=-1;},
+ draw(s){floor();board();
+  ctx.save();ctx.strokeStyle=C.ink;ctx.lineWidth=3;ctx.beginPath();ctx.arc(318,150,20,0,7);ctx.stroke();
+  ctx.lineWidth=2.5;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(318,150);ctx.lineTo(318,134);ctx.moveTo(318,150);ctx.lineTo(318,140);ctx.stroke();ctx.restore();
+  label(318,184,'12:00');
+  if(s.t>.2&&s.t<1.5)bubble(318,126,'噹～噹～');
+  const th=person(70,FL,{s:1.15,glasses:1,face:'right'});
+  if(s.hand>=0)bubble(th.x+20,th.y-16,'好，你說！');
+  else if(s.t>1.1&&s.t<5)bubble(th.x+20,th.y-16,'還有沒有問題？');
+  else if(s.t>=5)bubble(th.x+20,th.y-16,'那就下課！');
+  [175,240,305].forEach((x,i)=>{const me=i===1;
+   const h=person(x,SEAT,{seated:1,face:'left',me,arm:me&&s.hand>=0?'up':'down'});desk(x);
+   if(me){if(s.hand<0)youTag(h);}
+   else if(s.hand>=0)mark(h.x,h.y-22,'！？');
+   else if(s.t>1.9)mark(h.x,h.y-22,i===0?'…':'咕嚕',{size:i===0?17:14});});},
+ down(s){if(s.hand>=0)return;s.hand=s.t;end('f','午餐時間被延後五分鐘，全班都記住你了。',1.5);},
+ timeout(){return['p','你忍住沒問，全班準時衝去打飯。',.9];}},
+
+{title:'傳考卷',hint:'點擊你要把考卷傳給誰',time:7,
+ setup(s){s.fly=null;},
+ draw(s){floor();
+  const seats=[100,180,260];
+  const hs=seats.map((x,i)=>{const h=person(x,SEAT,{seated:1,face:'left',me:i===1,arm:i===1&&s.fly&&s.t-s.fly.t0<.5?'forward':'down'});desk(x);return h;});
+  if(!s.locked)youTag(hs[1]);
+  const top=SEAT-6,myDesk=157;
+  const k=(s.t-.2)/.8;let sx=lerp(20,myDesk,k),n=2;
+  if(s.fly){n=1;const f=(s.t-s.fly.t0)/.5;
+   drawStack(myDesk,top,1);sx=lerp(myDesk,s.fly.to,f);}
+  drawStack(sx,top,n);
+  if(s.fly&&s.fly.to<myDesk&&s.t-s.fly.t0>.5)mark(hs[0].x,hs[0].y-22,'？');
+  if(!s.fly&&s.t>4.4)bubble(hs[2].x,hs[2].y-14,'欸…考卷咧？');},
+ down(s,p){if(s.fly||s.t<1)return;
+  if(hit(p,260,SEAT-60,FL)){s.fly={to:237,t0:s.t};end('p','自己拿一張，剩下的往後傳。',1.2);}
+  else if(hit(p,100,SEAT-60,FL)){s.fly={to:77,t0:s.t};end('f','你把考卷又傳回前面了？',1.3);}},
+ timeout(){return['f','後面的同學一直戳你的背：考卷還沒傳過來。'];}},
+
+{title:'同學上課打瞌睡',hint:'點擊睡著的同學',time:0,
+ setup(s){s.tx=46;s.poke=-1;s.turn=1.7;s.caught=false;},
+ update(s,dt){if(s.t>s.turn&&s.tx<126&&s.poke<0)s.tx=Math.min(126,s.tx+40*dt);
+  if(!s.locked&&s.tx>=126&&s.poke<0){s.caught=true;end('f','老師站在他旁邊：「睡得很香喔？」',1.5);}},
+ draw(s){floor();board();
+  const writing=s.t<s.turn,walking=!writing&&s.tx<126&&s.poke<0;
+  const th=person(s.tx,FL,{s:1.15,glasses:1,face:writing?'left':'right',arm:writing?'write':'down',walk:walking?s.t*8:null});
+  if(writing&&Math.floor(s.t*4)%2===0)mark(120,108,'喀 喀',{size:14,muted:1});
+  const awake=s.poke>=0;
+  const sh=person(175,SEAT,{seated:1,face:'left',lean:awake?0:1.0});desk(175);
+  const me=person(272,SEAT,{seated:1,face:'left',me:1,arm:awake&&s.t-s.poke<.6?'forward':'down'});desk(272);
+  if(!awake)mark(sh.x+10,sh.y-14-(s.t*14%12),'z z z',{size:15});
+  else if(s.t-s.poke<1.3)mark(sh.x,sh.y-22,'！');
+  if(!s.locked)youTag(me);
+  if(s.caught)bubble(th.x+10,th.y-16,'睡得很香喔？');},
+ down(s,p){if(s.poke>=0||s.locked)return;
+  if(hit(p,165,SEAT-50,FL,34)){s.poke=s.t;
+   if(s.tx<100)end('p','你偷偷戳醒他，他立刻坐好抄筆記。',1.3);
+   else end('o','差一點就被發現了…',1.3);}}},
+
+{title:'最後一塊雞塊',hint:'點擊雞塊或同學',time:7,
+ setup(s){s.ate=-1;s.give=-1;},
+ draw(s){floor();
+  [[70,0],[140,1],[255,0]].forEach(([x,me],i)=>{const h=person(x,318,{seated:1,face:'right',me:!!me});
+   if(me&&!s.locked)youTag(h);
+   if(i===0&&s.t>.4&&s.t<2.2)bubble(h.x,h.y-14,'好飽～');
+   if(i===2&&s.t>2.4)mark(h.x,h.y-22,'嗝',{size:15});});
+  ctx.save();ctx.fillStyle=C.paper;ctx.strokeStyle=C.ink;ctx.lineWidth=3;
+  ctx.beginPath();ctx.rect(30,298,262,26);ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.moveTo(42,324);ctx.lineTo(42,FL);ctx.moveTo(280,324);ctx.lineTo(280,FL);ctx.stroke();
+  ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(198,297,24,5,0,0,7);ctx.fill();ctx.stroke();ctx.restore();
+  label(198,338,'最後一塊');
+  const dh=person(322,FL,{face:'left',hat:1,mask:1,apron:1,arm:'hold'});
+  label(322,FL+18,'值日生');
+  let nx=198,ny=287,show=true;
+  if(s.give>=0){const k=(s.t-s.give)/.6;nx=lerp(198,302,k);ny=lerp(287,300,k)-Math.sin(clamp(k,0,1)*Math.PI)*40;}
+  if(s.ate>=0){const k=(s.t-s.ate)/.5;nx=lerp(198,152,k);ny=lerp(287,276,k);show=k<1;}
+  if(show)nugget(nx,ny);
+  if(s.give>=0&&s.t-s.give>.6)bubble(dh.x,dh.y-16,'謝謝！');
+  else if(s.ate>=0&&s.t-s.ate>.5)mark(dh.x,dh.y-24,'…');
+  else if(s.t>1.2)bubble(dh.x,dh.y-16,'我還沒吃耶…');},
+ down(s,p){if(s.locked)return;
+  if(Math.hypot(p.x-198,p.y-287)<26){s.ate=s.t;end('f','你吃掉了最後一塊，值日生默默去收餐桶。',1.5);}
+  else if(hit(p,322,FL-72,FL,28)){s.give=s.t;end('p','「這塊留給你！」值日生超感動。',1.6);}},
+ timeout(){return['o','雞塊一直放到午休結束，最後被倒掉了。'];}},
+
+{title:'自己找組員',hint:'拖曳紅色的「你」去找組員',time:12,
+ setup(s){s.me={x:290,y:395};s.lone={x:70,y:395};s.drag=false;s.join=-1;s.res=null;},
+ update(s){if(s.join>=0){const k=(s.t-s.join)/1;s.me.x=lerp(s.jf.x,310,k);s.me.y=lerp(s.jf.y,268,k);s.lone.x=lerp(70,220,k);s.lone.y=lerp(395,268,k);}},
+ draw(s){
+  const th=person(180,150,{s:.85,glasses:1,face:'left'});
+  if(s.t<2.8)bubble(th.x,th.y-12,'四人一組，自己找組員！',{size:14});
+  else if(s.t>7&&!s.locked)bubble(th.x,th.y-12,'動作快～',{size:14});
+  [50,75,100,125].forEach((x,i)=>{const h=person(x,268,{s:.85,face:i<2?'right':'left',bob:-Math.abs(Math.sin(s.t*6+i))*2});
+   if(s.res==='A'&&i===3)mark(h.x,h.y-18,'…？',{size:15});});
+  label(88,288,'A 組');
+  [250,280].forEach((x,i)=>{const h=person(x,268,{s:.85,face:i?'left':'right',arm:i?'wave':'down',t:s.t});
+   if(i&&s.t>.8&&s.join<0&&s.res!=='B')bubble(h.x,h.y-12,'還差兩個～',{size:14});
+   if(i&&s.join>=0&&s.t-s.join>1)bubble(h.x,h.y-12,'歡迎！',{size:14});});
+  label(265,288,'B 組');
+  const lh=person(s.lone.x,s.lone.y,{s:.85,face:'right'});
+  if(s.join<0)mark(lh.x,lh.y-18,'…',{size:15});
+  const me=person(s.me.x,s.me.y,{s:s.drag?.9:.85,me:1,face:'left'});
+  if(!s.locked)youTag(me,.85);},
+ down(s,p){if(Math.abs(p.x-s.me.x)<30&&p.y>s.me.y-64&&p.y<s.me.y+12){s.drag=true;s.off={x:s.me.x-p.x,y:s.me.y-p.y};}},
+ move(s,p){if(!s.drag)return;s.me.x=clamp(p.x+s.off.x,18,W-18);s.me.y=clamp(p.y+s.off.y,200,H-8);},
+ up(s){if(!s.drag)return;s.drag=false;const{x,y}=s.me;
+  if(Math.abs(x-88)<70&&Math.abs(y-268)<50){s.res='A';s.me.x=155;s.me.y=268;end('f','A 組已經四個人了，大家尷尬地看著你。',1.4);}
+  else if(Math.abs(x-265)<62&&Math.abs(y-268)<50){s.res='B';s.me.x=310;s.me.y=268;end('o','你加入了 B 組，角落那位同學還是一個人。',1.4);}
+  else if(Math.abs(x-70)<48&&Math.abs(y-395)<45){s.jf={x,y};s.join=s.t;end('p','你拉著角落的同學一起加入 B 組，剛好四個人！',1.8);}},
+ timeout(){return['f','時間到，最後是老師幫你分組的。'];}},
+
+{title:'拍畢業照',hint:'快門前，拖曳紅色的「你」換位置',time:0,
+ setup(s){s.me={x:140,y:330};s.drag=false;s.flash=-1;},
+ update(s){if(!s.locked&&s.t>=4.4){s.drag=false;s.flash=s.t;const{x,y}=s.me;
+  if(Math.abs(x-262)<30&&Math.abs(y-282)<30)end('p','大家都入鏡了，完美的畢業照！',1.4);
+  else if(Math.abs(x-140)<32&&y>288&&y<375)end('f','照片洗出來，那位同學只露出半個頭。',1.4);
+  else if(Math.abs(y-282)<32&&x>36&&x<244)end('o','你硬擠進隊伍中間，大家被推得歪歪的。',1.4);
+  else end('o','沒擋到人，但你站得離大家好遠。',1.4);}},
+ draw(s){
+  ctx.save();ctx.strokeStyle=C.muted;ctx.lineWidth=2;ctx.setLineDash([5,5]);ctx.beginPath();ctx.moveTo(30,282);ctx.lineTo(292,282);ctx.stroke();ctx.restore();
+  floor(392);
+  const row=[[60,1],[100,1],[140,.78],[180,1],[220,1]];
+  const shot=s.flash>=0;
+  row.forEach(([x,sc],i)=>{const h=person(x,282,{s:sc,face:i<2?'right':'left',arm:shot&&i!==2?'cheer':'down'});
+   if(i===2&&s.t>.2&&s.t<2.2)bubble(h.x,h.y-12,'看不到我…',{size:14});});
+  const me=person(s.me.x,s.me.y,{me:1,s:1.22,face:'right'});
+  if(!s.locked)youTag(me,1.22);
+  const ph=person(326,392,{face:'left'});
+  ctx.save();ctx.fillStyle=C.ink;ctx.fillRect(ph.x-26,ph.y-8,18,13);ctx.fillStyle=C.paper;ctx.beginPath();ctx.arc(ph.x-26,ph.y-1.5,4,0,7);ctx.fill();ctx.restore();
+  const cd=s.t<.8?'':s.t<2?'3…':s.t<3.2?'2…':s.t<4.4?'1…':'喀嚓！';
+  if(cd)bubble(ph.x,ph.y-16,cd);
+  if(shot){const a=1-(s.t-s.flash)/.5;if(a>0){ctx.save();ctx.globalAlpha=a;ctx.fillStyle=C.paper;ctx.fillRect(0,0,W,H);ctx.restore();}}},
+ down(s,p){if(s.locked)return;if(Math.abs(p.x-s.me.x)<34&&p.y>s.me.y-82&&p.y<s.me.y+12){s.drag=true;s.off={x:s.me.x-p.x,y:s.me.y-p.y};}},
+ move(s,p){if(!s.drag||s.locked)return;s.me.x=clamp(p.x+s.off.x,20,W-20);s.me.y=clamp(p.y+s.off.y,150,392);},
+ up(s){if(!s.drag)return;s.drag=false;if(Math.abs(s.me.x-262)<38&&Math.abs(s.me.y-282)<42){s.me.x=262;s.me.y=282;}}},
+
+{title:'合唱比賽謝幕',hint:'點擊畫面：鞠躬',time:5.6,
+ setup(s){s.bow=-1;},
+ draw(s){
+  ctx.save();ctx.strokeStyle=C.muted;ctx.lineWidth=2;ctx.strokeRect(80,FL,250,14);ctx.restore();
+  floor(FL+14);
+  const singing=s.t<2;
+  const ch=person(42,FL+14,{s:1.1,glasses:1,face:s.t<2.6?'right':'left',arm:singing?'wave':'down',t:s.t,lean:s.t>3.15&&s.t<4.3?.6:0});
+  label(42,FL+30,'指揮');
+  [100,150,200,250,300].forEach((x,i)=>{const me=i===2;
+   const groupBow=s.t>3.4&&s.t<4.6;
+   const lean=me?(s.bow>=0&&s.t-s.bow<1.2?.7:0):(groupBow?.7:0);
+   const h=person(x,FL,{face:'left',me,lean});
+   if(singing)mark(h.x+(i%2?8:-8),h.y-24-((s.t*20+i*7)%14),'♪',{size:16,me});
+   if(me&&!s.locked)youTag(h);});
+  if(s.t>3.9)mark(180,404,'啪啪啪啪',{size:15,muted:1});},
+ down(s){if(s.bow>=0)return;s.bow=s.t;const d=s.t-3.4;
+  if(d<-.45)end('f','只有你提早鞠躬，大家還站得直直的。',1.4);
+  else if(d<=.45)end('p','整齊的鞠躬，台下掌聲響起！',1.5);
+  else if(d<=1.1)end('o','慢了半拍，還好沒什麼人發現。',1.4);
+  else end('f','大家都起身了，你才彎下腰。',1.4);},
+ timeout(){return['f','全班鞠躬，只有你直挺挺地站著。'];}}
+];
+
+function drawStack(x,y,n){ctx.save();ctx.fillStyle=C.paper;ctx.strokeStyle=C.ink;ctx.lineWidth=1.6;
+  for(let i=0;i<n;i++){ctx.beginPath();ctx.rect(x-12,y-5-i*4,24,4);ctx.fill();ctx.stroke();}ctx.restore();}
+function nugget(x,y){ctx.save();ctx.fillStyle=C.paper;ctx.strokeStyle=C.ink;ctx.lineWidth=2.5;ctx.beginPath();
+  ctx.moveTo(x-12,y+2);ctx.quadraticCurveTo(x-13,y-9,x-2,y-9);ctx.quadraticCurveTo(x+12,y-11,x+12,y);ctx.quadraticCurveTo(x+11,y+8,x,y+7);ctx.quadraticCurveTo(x-11,y+9,x-12,y+2);
+  ctx.fill();ctx.stroke();ctx.fillStyle=C.ink;[[-5,-3],[3,-4],[0,2],[6,1]].forEach(([a,b])=>{ctx.beginPath();ctx.arc(x+a,y+b,1.2,0,7);ctx.fill();});ctx.restore();}
+
+/* ---------- 第二系列：將心比心篇 ---------- */
+function poster(x,y,o={}){ctx.save();ctx.fillStyle=C.paper;ctx.strokeStyle=o.me?C.red:C.ink;ctx.lineWidth=2.5;
+  ctx.beginPath();ctx.rect(x-30,y,60,44);ctx.fill();ctx.stroke();ctx.lineWidth=1.8;ctx.beginPath();
+  ctx.arc(x+16,y+14,6,0,7);ctx.moveTo(x-22,y+38);ctx.lineTo(x-22,y+26);ctx.lineTo(x-12,y+18);ctx.lineTo(x-2,y+26);ctx.lineTo(x-2,y+38);ctx.stroke();
+  if(o.tiny){ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x-24,y+7);ctx.lineTo(x-10,y+7);ctx.stroke();}ctx.restore();}
+function seatRow(xs,f){return xs.map((x,i)=>{const h=person(x,SEAT,Object.assign({seated:1,face:'left'},f?f(i):{}));desk(x);return h;});}
+function teacher(x,o={}){return person(x,FL,Object.assign({s:1.15,glasses:1,face:'right'},o));}
+function meter(x,y,w,v,lab,word){ctx.save();ctx.font=`13px ${FONT}`;ctx.textBaseline='alphabetic';ctx.fillStyle=C.ink;ctx.textAlign='left';ctx.fillText(lab,x,y-6);
+  if(word){ctx.textAlign='right';ctx.fillStyle=v<40?C.ink:C.red;ctx.fillText(v>=70?'開心':v>=40?'還好':'難過',x+w,y-6);}
+  ctx.strokeStyle=C.ink;ctx.lineWidth=2;roundRect(x,y,w,12,6);ctx.stroke();
+  const fw=(w-4)*clamp(v,0,100)/100;if(fw>1){ctx.fillStyle=C.red;roundRect(x+2,y+2,fw,8,4);ctx.fill();}ctx.restore();}
+function wrap(text,max){const lines=[];let cur='';for(const ch of text){
+  if(cur&&ctx.measureText(cur+ch).width>max&&!'，。！？…、」）'.includes(ch)){lines.push(cur);cur=ch;}else cur+=ch;}lines.push(cur);return lines;}
+const laugh=(t,i)=>-Math.abs(Math.sin(t*14+i))*3;
+const at=(s,a,b)=>s.t>=a&&s.t<b;
+
+function drawLater3(s){floor();
+  const good=s.pend&&s.pend.g==='p';
+  teacher(60);
+  bubble(70,FL-84,good?'這組做得很好！':'這組拿了兩盒，要扣分喔。',{size:14});
+  [[150,'小安'],[200,''],[250,'小宇'],[300,'小晴']].forEach(([x,n],i)=>{person(x,FL,{me:i===1,face:i<2?'right':'left'});if(n)label(x,FL+18,n);});
+  ctx.save();ctx.fillStyle=C.paper;ctx.strokeStyle=C.ink;ctx.lineWidth=3;ctx.beginPath();ctx.rect(125,302,200,24);ctx.fill();ctx.stroke();
+  ctx.lineWidth=2;ctx.beginPath();ctx.rect(200,288,30,14);if(!good)ctx.rect(236,288,30,14);ctx.fill();ctx.stroke();ctx.restore();}
+
+/* ---------- 試玩版：將心比心篇・新玩法 ---------- */
+const mem={};
+function setStage(s,n){s.stage=n;s.t0=s.t;s.shown=0;}
+function card(txt,st){if(st>=1.2)return;const a=st<.9?1:(1.2-st)/.3;ctx.save();ctx.globalAlpha=a*.95;ctx.fillStyle=C.paper;ctx.fillRect(0,0,W,H);
+  ctx.globalAlpha=a;ctx.font=`20px ${FONT}`;ctx.fillStyle=C.red;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(txt,W/2,H/2-10);ctx.restore();}
+function reveal(s,b,done){hideChoices();s.rv={b,bt:0,done};$('hint').textContent='點一下畫面繼續';}
+
+const LV3=[
+{title:'作品分享時間',hint:'按住畫面，介紹你的海報',time:0,
+ discuss:'被說「好醜」的時候，你心裡在想什麼？小美聽到「這邊畫歪了」的時候，又在想什麼？',
+ setup(s){s.stage=0;s.t0=0;s.prog=0;s.mood=70;s.hk=0;s.hkAt=-9;s.hold=false;s.pick=null;s.guessOk=false;},
+ update(s,dt){const st=s.t-s.t0;
+  if(s.stage===0){const busy=s.t-s.hkAt<2.6;
+   if(s.hold&&!busy&&s.prog<100)s.prog=Math.min(100,s.prog+dt*16);
+   const th=[22,48,74][s.hk];if(th!=null&&s.prog>=th){s.hk++;s.hkAt=s.t;s.prog=Math.max(0,s.prog-15);s.mood-=18;}
+   if(s.prog>=100&&!s.doneAt)s.doneAt=s.t;
+   if(s.doneAt&&s.t-s.doneAt>1.6){setStage(s,1);$('hint').textContent='看看小美上台時發生了什麼';}}
+  else if(s.stage===1){if(!s.shown&&st>=4.2){s.shown=1;showChoices('你猜，小美現在心裡在想什麼？',[
+   {k:'g1',t:'「好，那我回去改一下。」'},{k:'g2',t:'「我畫了好久，他只看到畫歪的地方……」'},{k:'g3',t:'「他是不是故意找我麻煩？」'}]);}}
+  else if(s.stage===2){if(!s.shown&&st>=1.8){s.shown=1;$('hint').textContent='選一句你想對小美說的話';showChoices('小美看向你。你會說：',[
+   {k:'a',t:'「還不錯啊。」'},{k:'c',t:'「天空好漂亮！標題再大一點會更清楚。」'},{k:'b',t:'「標題字有點小。」'},{k:'d',t:'（不說話）'}]);}}},
+ draw(s){floor();const st=s.t-s.t0;
+  if(s.stage===0){teacher(36);
+   const busy=s.t-s.hkAt<2.6,slump=s.t-s.hkAt<2.2;
+   const me=person(116,FL,{me:1,face:'right',arm:slump?'down':'forward',lean:slump?.25:0});
+   if(!slump)poster(158,FL-80,{me:1});
+   const hs=seatRow([215,275,335]);
+   if(s.hk>0&&busy){const i=s.hk,j=[1,2,0][i-1];bubble(hs[j].x,hs[j].y-14,['好醜喔。','看不懂欸。','這是在畫什麼啊？'][i-1]);}
+   if(s.doneAt)bubble(me.x+10,me.y-14,'……就這樣。',{me:1});
+   else if(busy&&s.hk>0)mark(me.x,me.y-22,'……',{me:1});
+   else if(s.hold)bubble(me.x+10,me.y-14,['這是我畫的海報……','我畫的是我家附近……','旁邊是我最喜歡的公園。'][Math.min(2,Math.floor(s.prog/34))],{me:1});
+   else if(s.prog<1)mark(W/2,200,'按住畫面，開始介紹',{size:15,muted:1});
+   youTag(me);
+   meter(24,40,140,s.prog,'介紹進度');meter(196,40,140,s.mood,'你的心情',1);}
+  else{teacher(36);
+   const h=person(116,FL,{face:'right',arm:'forward'});poster(158,FL-80);label(116,FL+18,'小美');
+   const hs=seatRow([215,275,335],i=>({me:i===1}));label(335,FL+18,'阿哲');if(!s.locked&&!s.rv)youTag(hs[1]);
+   if(s.stage===1){if(at({t:st},1.4,2.6))bubble(h.x+10,h.y-14,'這是我畫的海報！');if(st>=2.6)bubble(hs[2].x,hs[2].y-14,'這邊畫歪了。');card('換小美上台了。',st);}
+   else{const since=s.pick?s.t-s.pt:0;
+    if(st<1.6&&!s.pick)bubble(46,FL-84,'還有人想說說看嗎？',{size:14});
+    if(s.pick&&since<1.6)bubble(hs[1].x,hs[1].y-14,{a:'還不錯啊。',b:'標題字有點小。',c:'天空好漂亮！',d:'……'}[s.pick],{me:1});
+    if(s.pick==='c'&&since>.8)mark(h.x+2,h.y-22,'♪');}}},
+ down(s){if(s.stage===0)s.hold=true;},
+ up(s){s.hold=false;},
+ choose(s,k){
+  if(s.stage===1){s.guessOk=k==='g2';
+   reveal(s,{x:116,y:FL-60,name:'小美',banner:'小美真正的心裡話',cap:s.guessOk?'你猜中了。':'你猜錯了。',
+    cap2:'剛剛你被說「好醜」的時候，心裡是不是也有點像這樣？',thought:'我畫了一整個禮拜，他只看到畫歪的地方……',from:70,to:35},
+    ()=>setStage(s,2));return;}
+  s.pick=k;s.pt=s.t;
+  const R={a:['o','「還不錯」很安全，但小美不知道哪裡不錯。','「還不錯」……是哪裡不錯呢？',45],
+   b:['f','說到了具體的地方，可是只有缺點。','又一個缺點……我是不是不適合畫畫？',20],
+   c:['p','先說你看到的優點，再給一個具體的建議。','有人注意到我畫的天空！標題我回家改大一點。',85],
+   d:['o','不說話不會傷人，但小美還在等有人說點什麼。','沒有人要說話了……',30]}[k];
+  mem.mei=R[3];
+  end(R[0],R[1]+(s.guessOk?'（你也猜中了小美的心情。）':''),1.6,[{x:116,y:FL-60,name:'小美',thought:R[2],from:35,to:R[3]}]);}},
+
+{title:'「先聽我說完」',hint:'按住畫面，說出你的想法',time:0,
+ discuss:'被打斷的時候是什麼感覺？很想說話的時候，可以先怎麼做？',
+ setup(s){s.stage=0;s.t0=0;s.prog=0;s.mood=70;s.hk=0;s.hkAt=-9;s.hold=false;s.tap=-1;s.pp=0;s.fin=0;s.refuse=mem.mei!=null&&mem.mei<40;},
+ pres(s){return s.refuse?{x:70,name:'老師',start:2.8,y:FL-70,lines:['活動要準備回收的紙盒……','每組要先畫設計圖……','做完之後要上台介紹……','最後，記得把桌面收乾淨。']}
+  :{x:116,name:'小美',start:1.4,y:FL-60,lines:['我把海報改好了……','標題我改大了……','天空用了三種藍色……','最後，我想說……']};},
+ update(s,dt){const st=s.t-s.t0;
+  if(s.stage===0){const busy=s.t-s.hkAt<(s.hk===4?3.6:2.4);
+   if(s.hold&&!busy&&s.prog<100)s.prog=Math.min(100,s.prog+dt*18);
+   const th=[18,38,58,78][s.hk];if(th!=null&&s.prog>=th){s.hk++;s.hkAt=s.t;s.prog=Math.max(0,s.prog-12);s.mood-=14;}
+   if(s.prog>=100&&!s.doneAt)s.doneAt=s.t;
+   if(s.doneAt&&s.t-s.doneAt>1.4){setStage(s,1);$('hint').textContent='這次換你當聽眾。點擊畫面＝舉手說話';}}
+  else{const P=this.pres(s);
+   if(s.tap<0&&st>P.start&&s.pp<100)s.pp=Math.min(100,s.pp+dt*16);
+   if(s.pp>=100&&!s.fin)s.fin=s.t;
+   if(!s.locked&&s.fin&&s.t-s.fin>4.5)end('o','你忍住了，可是最後沒有說出你的想法。',.3,[{x:P.x,y:P.y,name:P.name,thought:'說完了，有人想說說看嗎？',from:60,to:60}]);}},
+ draw(s){floor();const st=s.t-s.t0;
+  if(s.stage===0){teacher(36);
+   const busy=s.t-s.hkAt<(s.hk===4?3.6:2.4),cut=s.hk>0&&s.t-s.hkAt<2.4;
+   const me=person(116,FL,{me:1,face:'right',lean:cut?.2:0});
+   const hs=seatRow([215,275,335],i=>({arm:i===1&&cut?'up':'down'}));label(275,FL+18,'小宇');
+   if(st<1.8&&!s.hold&&s.prog<1)bubble(46,FL-84,'請你說說你的想法。',{size:14});
+   if(cut)bubble(hs[1].x,hs[1].y-14,['我知道！我知道！','我也有想法！','換我說啦！','我先講啦！'][s.hk-1],{size:17});
+   else if(s.hk===4&&busy)bubble(46,FL-84,'小宇，先讓他說完。',{size:14});
+   if(s.doneAt)bubble(me.x+10,me.y-14,'……說完了。',{me:1});
+   else if(cut)mark(me.x,me.y-22,'……',{me:1});
+   else if(s.hold&&!busy)bubble(me.x+10,me.y-14,['我覺得可以……','把回收的紙盒……','做成一座小城市！'][Math.min(2,Math.floor(s.prog/34))],{me:1});
+   else if(s.prog<1&&st>=1.8)mark(W/2,200,'按住畫面，開始說',{size:15,muted:1});
+   youTag(me);
+   meter(24,40,140,s.prog,'你的發表');meter(196,40,140,s.mood,'你的心情',1);return;}
+  const P=this.pres(s),cut=s.tap>=0&&!s.fin;
+  let ph;
+  if(s.refuse){ph=teacher(70);}
+  else{teacher(36);ph=person(116,FL,{face:'right',arm:'forward',lean:cut&&s.t-s.tap>.6?.25:0});poster(158,FL-80,{tiny:0});label(116,FL+18,'小美');}
+  const hs=seatRow(s.refuse?[175,240,305]:[215,275,335],i=>({me:i===1,arm:i===1&&s.tap>=0?'up':'down'}));
+  if(s.refuse){label(175,FL+18,'小美');if(at({t:st},1.2,2.8))bubble(hs[0].x,hs[0].y-14,'我……不想上台了。',{size:14});else mark(hs[0].x,hs[0].y-22,'……',{muted:1});}
+  if(!s.locked)youTag(hs[1]);
+  if(cut){if(s.t-s.tap<1.6)bubble(hs[1].x,hs[1].y-14,'我知道！我知道！',{me:1});if(s.t-s.tap>.6)mark(ph.x,ph.y-24,'……');}
+  else if(s.fin){bubble(ph.x+12,ph.y-14,s.tap>=0?'好，你說！':'我說完了，有人想說說看嗎？',{size:14});}
+  else if(st>P.start)bubble(ph.x+12,ph.y-14,P.lines[Math.min(3,Math.floor(s.pp/25))],{size:14});
+  meter(24,40,140,s.pp,`${P.name}的發表`);
+  if(s.tap<0&&!s.fin&&st>P.start)meter(196,40,140,Math.min(100,(st-P.start)*16),'你好想說！');
+  card(s.refuse?'換你當聽眾了。小美呢？':'換你當聽眾了。',st);},
+ down(s){if(s.stage===0){s.hold=true;return;}
+  const P=this.pres(s),st=s.t-s.t0;if(s.tap>=0||st<P.start)return;s.tap=s.t;
+  if(!s.fin){s.pp=Math.max(0,s.pp-15);
+   end('f',`你一插嘴，${P.name}的發表進度就掉下來了，就跟剛才的你一樣。`,1.8,[{x:P.x,y:P.y,name:P.name,
+    thought:P.name==='小美'?'剛剛被說畫歪，現在又被打斷……我是不是不要上台比較好？':'講到一半就被打斷，大家都沒聽到重點。',from:65,to:20}]);}
+  else end('p',`你等${P.name}說完才舉手，大家都聽到了完整的內容。`,1.4,[{x:P.x,y:P.y,name:P.name,
+   thought:P.name==='小美'?'我終於把想說的都說完了！':'大家都等我講完，真好。',from:60,to:90}]);},
+ up(s){s.hold=false;}}
+];
+
+/* ---------- 將心比心篇：新增三關 ---------- */
+function groupTable(){ctx.save();ctx.fillStyle=C.paper;ctx.strokeStyle=C.ink;ctx.lineWidth=3;ctx.beginPath();ctx.rect(30,298,300,26);ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.moveTo(42,324);ctx.lineTo(42,FL);ctx.moveTo(318,324);ctx.lineTo(318,FL);ctx.stroke();ctx.restore();}
+function subtitle(txt){ctx.save();ctx.fillStyle=C.paper;ctx.strokeStyle=C.ink;ctx.lineWidth=2;roundRect(16,98,328,38,6);ctx.fill();ctx.stroke();
+  ctx.font=`15px ${FONT}`;ctx.fillStyle=C.ink;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('老師：'+txt,W/2,118);ctx.restore();}
+
+const RULES={title:'老師在講規則',hint:'仔細聽老師說的規則',time:0,
+ discuss:'旁邊一直有人聊天的時候，你聽得清楚嗎？老師講規則時，我們可以怎麼做？',
+ R:[[.8,3.8,'第一，每組只能拿一盒積木。',1.3,180,0,'欸！你看你看！'],
+    [4,7,'第二，做完要舉手給老師看。',4.5,232,2,'哈哈哈超好笑！'],
+    [7.2,10,'第三，十分鐘後要全部收好。',7.6,150,0,'等一下要玩什麼？']],
+ L:['我再說一次重要的規則……','每組只能拿一盒積木……','做完要舉手給老師看……','十分鐘後要全部收好。'],
+ Y:[[2,3.4,'欸，來玩這個！'],[3.8,5.2,'欸欸！'],[5.6,7,'看一下就好啦！'],[7.4,8.8,'你很無聊欸。']],
+ setup(s){s.stage=0;s.t0=0;s.mood=70;s.cov=0;s.tap=-1;s.pp=0;},
+ update(s,dt){const st=s.t-s.t0;
+  if(s.stage===0){const n=this.R.filter(r=>st>=r[3]).length;if(n>s.cov){s.cov=n;s.mood-=12;}
+   if(!s.shown&&st>=10.4){s.shown=1;showChoices('老師剛剛說，每組可以拿幾盒積木？',[{k:'1',t:'一盒'},{k:'2',t:'兩盒'},{k:'3',t:'三盒'},{k:'x',t:'沒聽清楚'}]);}}
+  else{if(s.tap<0&&st>1.4&&s.pp<100)s.pp=Math.min(100,s.pp+dt*13);
+   if(s.pp>=100&&!s.locked)end('p','你沒有轉過去，把規則都聽清楚了。',1.2,[
+    {x:70,y:FL-70,name:'老師',thought:'大家都很專心，我可以把規則講清楚。',from:60,to:90},
+    {x:250,y:FL-60,name:'小宇',cap:'十分鐘後，分組活動',thought:'你都沒理我……還好我後來也聽到規則了。',from:50,to:75}]);}},
+ draw(s){if((phase==='swap'||phase==='result')&&s.beat>=1)return drawLater3(s);
+  floor();board();mark(91,132+40,'活動規則',{size:14});const st=s.t-s.t0;
+  if(s.stage===0){teacher(70);
+   const talk=this.R.filter(r=>at({t:st},r[3],r[1]));
+   const hs=seatRow([175,240,305],i=>({me:i===1,bob:talk.some(r=>r[5]===i)?laugh(s.t,i):0}));
+   youTag(hs[1]);
+   const R=this.R.find(r=>at({t:st},r[0],r[1]));if(R)subtitle(R[2]);
+   talk.forEach(r=>{bubble(r[4],152,r[6],{size:17});mark(hs[r[5]].x,hs[r[5]].y-22,'嘰嘰喳喳',{size:13});});
+   meter(196,40,140,s.mood,'你的心情',1);
+   if(st>=10&&!s.rv)mark(W/2,200,'老師講完了。',{size:15,muted:1});return;}
+  const cut=s.tap>=0,th=teacher(70);
+  if(cut&&s.t-s.tap>.8)mark(th.x,th.y-24,'……');
+  else if(st>1.4)bubble(th.x+20,th.y-16,this.L[Math.min(3,Math.floor(s.pp/25))],{size:14});
+  const hs=seatRow([175,240,305],i=>({me:i===1,face:i===1&&cut?'right':'left',arm:i===2&&!cut?'wave':'down',t:s.t,bob:cut&&i>0?laugh(s.t,i):0}));
+  label(305,FL+18,'小宇');if(!s.locked)youTag(hs[1]);
+  if(cut){mark(hs[1].x,hs[1].y-22,'嘻嘻',{me:1});mark(hs[2].x,hs[2].y-22,'嘻嘻');}
+  else{const Y=this.Y.find(y=>at({t:st},y[0],y[1]));if(Y)bubble(hs[2].x,hs[2].y-14,Y[2],{size:14});}
+  meter(24,40,140,s.pp,'老師的說明');
+  card('換你坐在小宇旁邊了。',st);},
+ choose(s,k){reveal(s,{x:70,y:FL-70,name:'老師',banner:'老師剛剛說的規則',cap:k==='1'?'你答對了，但剛剛聽得很辛苦吧？':'你沒聽清楚。',
+   cap2:'旁邊一直有人聊天的時候，是不是很煩？',thought:'第一，每組只能拿一盒積木。',from:60,to:40},
+   ()=>{setStage(s,1);$('hint').textContent='這次換你被找去玩。點擊畫面＝轉過去跟小宇玩';});},
+ down(s){if(s.stage!==1||s.tap>=0||s.t-s.t0<1.4)return;s.tap=s.t;
+  end('f','你轉過去玩，沒聽到規則，整組都被扣分了。',1.8,[
+   {x:70,y:FL-70,name:'老師',thought:'我說了好幾次，還是有人在玩……',from:70,to:30},
+   {x:150,y:FL-60,name:'小安',cap:'十分鐘後，分組活動',thought:'我們這組被扣分了，因為有人沒聽規則……',from:60,to:20}]);}};
+
+const WRONG={title:'同學答錯了',hint:'按住畫面，鼓起勇氣舉手',time:0,
+ discuss:'答錯時被笑，是什麼感覺？看到別人答錯時，我們可以怎麼做？',
+ G:[[2,'噗……',0],[3.6,'這也不會喔？',2],[5.2,'哈……',0]],
+ setup(s){s.stage=0;s.t0=0;s.prog=0;s.mood=70;s.hold=false;s.ans=0;s.gk=0;s.guessOk=false;s.pick=null;},
+ update(s,dt){const st=s.t-s.t0;
+  if(s.stage===0){if(!s.ans){if(s.hold&&st>1.6)s.prog=Math.min(100,s.prog+dt*40);if(s.prog>=100)s.ans=s.t;}
+   else{const a=s.t-s.ans,n=this.G.filter(g=>a>=g[0]).length;if(n>s.gk){s.gk=n;s.mood-=16;}
+    if(a>7.4){setStage(s,1);$('hint').textContent='換小宇回答了，看看發生什麼事';}}}
+  else if(s.stage===1){if(!s.shown&&st>=4.8){s.shown=1;showChoices('你猜，小宇現在心裡在想什麼？',[
+   {k:'g3',t:'「是老師題目出太難了。」'},{k:'g2',t:'「大家都在笑我……下次不要舉手了。」'},{k:'g1',t:'「沒差啦，答錯又不會怎樣。」'}]);}}
+  else if(!s.shown&&st>=1.2){s.shown=1;$('hint').textContent='選一個你的反應';showChoices('小宇坐下來了，就在你前面。你會：',[
+   {k:'a',t:'跟著笑一下'},{k:'d',t:'小聲說：「我剛剛也答錯了。」'},{k:'c',t:'說：「3 乘以 4 是 12 啦！」'},{k:'b',t:'（裝作沒看到）'}]);}},
+ draw(s){floor();board();const st=s.t-s.t0;
+  if(s.stage===0){mark(91,172,'7 × 8 = ?',{size:14});const th=teacher(70),a=s.ans?s.t-s.ans:-1;
+   if(!s.ans)bubble(th.x+20,th.y-16,'誰知道 7 乘以 8 等於多少？',{size:14});
+   else if(a>=1.2&&a<2.6)bubble(th.x+20,th.y-16,'嗯……不對喔，是 56。',{size:14});
+   const slump=a>=1.2;
+   const hs=seatRow([175,240,305],i=>({me:i===1,arm:i===1&&(s.hold||(s.ans&&a<1.2))?'up':'down',lean:i===1&&slump?.3:0}));
+   youTag(hs[1]);
+   if(!s.ans&&s.hold)mark(hs[1].x+6,hs[1].y-48,'（是 54？還是 56？）',{size:13,me:1});
+   if(s.ans&&a<1.2)bubble(hs[1].x,hs[1].y-14,'等於……54！',{me:1});
+   if(slump)mark(hs[1].x,hs[1].y-22,'……',{me:1});
+   this.G.forEach(g=>{if(a>=g[0]&&a<g[0]+1.4)bubble(hs[g[2]].x,hs[g[2]].y-14,g[1],{size:14});});
+   if(!s.ans&&s.prog<1&&st>1.6)mark(W/2,200,'按住畫面，鼓起勇氣舉手',{size:15,muted:1});
+   meter(24,40,140,s.prog,'鼓起勇氣');meter(196,40,140,s.mood,'你的心情',1);return;}
+  mark(91,172,'3 × 4 = ?',{size:14});const th=teacher(70);
+  if(s.stage===1&&at({t:st},1.4,2.6))bubble(th.x+20,th.y-16,'3 乘以 4 等於多少？',{size:14});
+  const since=s.pick?s.t-s.pt:0;
+  const hs=seatRow([175,240,305],i=>({me:i===1,arm:i===0&&s.stage===1&&at({t:st},2,3.4)?'up':'down',
+   lean:i===0&&(s.stage===2||st>3.6)&&s.pick!=='d'?.25:0,bob:i===1&&s.pick==='a'&&since<1.6?laugh(s.t,1):0}));
+  label(175,FL+18,'小宇');if(!s.locked&&!s.rv)youTag(hs[1]);
+  if(s.stage===1){if(at({t:st},2.4,3.6))bubble(hs[0].x,hs[0].y-14,'等於……7！');
+   if(st>=3.6)bubble(hs[2].x,hs[2].y-14,'噗……',{size:14});card('換小宇回答了。',st);}
+  else if(s.pick){const T={a:'嘿嘿……',b:'……',c:'3 乘以 4 是 12 啦！',d:'我剛剛也答錯了。'}[s.pick];
+   if(since<1.6)bubble(hs[1].x,hs[1].y-14,T,{me:1,size:14});
+   if(s.pick==='d'&&since>.8)mark(hs[0].x,hs[0].y-22,'！');}},
+ down(s){if(s.stage===0&&!s.ans)s.hold=true;},
+ up(s){s.hold=false;},
+ choose(s,k){
+  if(s.stage===1){s.guessOk=k==='g2';
+   reveal(s,{x:175,y:SEAT-38,name:'小宇',banner:'小宇真正的心裡話',cap:s.guessOk?'你猜中了。':'你猜錯了。',
+    cap2:'剛剛你答錯被笑的時候，是不是也有點這樣想？',thought:'大家都在笑我……下次不要舉手了。',from:60,to:25},()=>setStage(s,2));return;}
+  s.pick=k;s.pt=s.t;
+  const R={a:['f','你笑了一下，小宇把頭埋得更低了。','連你也笑我……',5],
+   b:['o','你沒有笑，但小宇覺得只有自己一個人。','都沒有人理我……',35],
+   c:['o','你說的是對的，可是大家都聽到了，小宇更不好意思。','我知道是 12 啦……不用講那麼大聲。',40],
+   d:['p','一句「我也答錯了」，讓小宇覺得沒那麼丟臉。','原來不是只有我會答錯，好像沒那麼丟臉了。',80]}[k];
+  mem.yu=R[3];
+  end(R[0],R[1]+(s.guessOk?'（你也猜中了小宇的心情。）':''),1.6,[{x:175,y:SEAT-38,name:'小宇',thought:R[2],from:25,to:R[3]}]);}};
+
+const GROUP={title:'分組討論',hint:'按住畫面，說出你的想法',time:0,
+ discuss:'一直插不進話是什麼感覺？分組時，怎麼確定每個人都有機會說話？',
+ setup(s){s.stage=0;s.t0=0;s.prog=0;s.mood=70;s.hk=0;s.hkAt=-9;s.hold=false;s.spoke={};s.reply=null;s.inv=-1;s.yuOut=mem.yu!=null&&mem.yu<40;},
+ update(s,dt){const st=s.t-s.t0;
+  if(s.stage===0){const busy=s.t-s.hkAt<(s.hk===4?3.4:2.4);
+   if(s.hold&&!busy&&st>1)s.prog=Math.min(100,s.prog+dt*18);
+   const th=[15,32,48,62][s.hk];if(th!=null&&s.prog>=th){s.hk++;s.hkAt=s.t;s.prog=Math.max(0,s.prog-10);s.mood-=14;}
+   if(s.hk===4&&!busy){setStage(s,1);$('hint').textContent='換你當組長。點擊一位同學，問問他的想法';}}
+  else{const sp=[[1.6,'小晴'],[3.4,'小宇'],[5.2,'小晴']];sp.forEach(([t,n])=>{if(st>=t&&!(n==='小宇'&&s.yuOut))s.spoke[n]=1;});
+   if(!s.locked&&st>=13.4)end('f','討論時間結束，小安一句話都沒說到。',.4,[{x:295,y:280,name:'小安',
+    cap:'小安剛剛，就跟第一段的你一樣。',thought:'我也有想法……可是一直插不進話。',from:50,to:15}]);}},
+ draw(s){floor();const st=s.t-s.t0;
+  if(s.stage===0){
+   const P=[[70,'小晴','right'],[135,'阿哲','right'],[225,'小宇','left'],[295,'','left']];
+   const busy=s.t-s.hkAt<(s.hk===4?3.4:2.4),cut=s.hk>0&&busy;
+   const hs=P.map(([x,,f],i)=>person(x,318,{seated:1,face:f,me:i===3,lean:i===3&&cut?.25:0}));
+   groupTable();P.forEach(([x,n])=>n&&label(x,FL+18,n));youTag(hs[3]);
+   if(cut)bubble(hs[1].x,hs[1].y-14,['先聽我說！','我覺得我的比較好。','等一下啦，我還沒講完。','好，就照我的決定！'][s.hk-1],{size:17});
+   else if(!s.hold)bubble(hs[1].x,hs[1].y-14,['我覺得要用紅色！','還要畫一隻恐龍！','然後旁邊再加……'][Math.floor(s.t/1.6)%3],{size:14});
+   if(cut)mark(hs[3].x,hs[3].y-22,'……',{me:1});
+   else if(s.hold&&st>1)bubble(hs[3].x,hs[3].y-14,['我想……','我覺得可以……','可以做成立體的……'][Math.min(2,Math.floor(s.prog/22))],{me:1,size:14});
+   else if(s.prog<1&&st>1)mark(W/2,200,'按住畫面，說出你的想法',{size:15,muted:1});
+   meter(24,40,140,s.prog,'你的想法');meter(196,40,140,s.mood,'你的心情',1);return;}
+  const P=[[70,'小晴','right'],[135,'','right'],[225,'小宇','left'],[295,'小安','left']];
+  const hs=P.map(([x,,f],i)=>i===2&&s.yuOut?{x,y:280}:person(x,318,{seated:1,face:f,me:i===1}));
+  groupTable();P.forEach(([x,n],i)=>n&&label(x,FL+18,i===2&&s.yuOut?'（小宇去別組了）':n));
+  if(!s.locked&&!s.rv)youTag(hs[1]);
+  if(s.yuOut&&at({t:st},1.2,2.8))bubble(225,280,'我想去別組……',{size:14});
+  const lines=[[1.6,3,0,'我覺得可以用紙箱！'],[3.4,4.8,2,'我想加一台小火車！'],[5.2,6.4,0,'還可以畫招牌！'],[7.6,8.8,1,'好，還有嗎？']];
+  if(s.inv<0){lines.forEach(([a,b,i,t])=>{if(i===2&&s.yuOut)return;if(at({t:st},a,b)&&!(s.reply&&s.t-s.reply.t<1.6))bubble(hs[i].x,hs[i].y-14,t,{size:14,me:i===1});});
+   if(at({t:st},2.4,2.9)||at({t:st},6.8,7.3)||at({t:st},10.4,10.9))mark(hs[3].x,hs[3].y-24,'我……',{size:12,muted:1});}
+  if(s.reply&&s.t-s.reply.t<1.6){const i=s.reply.i;if(s.t-s.reply.t<.8)bubble(hs[1].x,hs[1].y-14,`${P[i][1]}，你覺得呢？`,{me:1,size:14});
+   else bubble(hs[i].x,hs[i].y-14,s.reply.first?(i===0?'我覺得可以用紙箱！':'我想加一台小火車！'):'我剛剛說過了啊。',{size:14});}
+  if(s.inv>=0){const a=s.t-s.inv;if(a<1)bubble(hs[1].x,hs[1].y-14,'小安，你覺得呢？',{me:1,size:14});else bubble(hs[3].x,hs[3].y-14,'可以做成立體的城市！',{size:14});}
+  meter(24,40,140,Math.max(0,100-(st-1.2)/12.2*100),'討論時間');
+  card('換你當組長了。',st);},
+ down(s,p){if(s.stage===0){s.hold=true;return;}
+  if(s.inv>=0||s.t-s.t0<1.2)return;
+  if(hit(p,295,250,330,28)){s.inv=s.t;end('p','你主動問了小安，他的點子讓作品變得更特別。',2.2,[{x:295,y:280,name:'小安',
+   cap:'小安剛剛，就跟第一段的你一樣。',thought:'終於有人問我了！我想到可以做成立體的。',from:30,to:90}]);return;}
+  for(const[x,n,i]of[[70,'小晴',0],[225,'小宇',2]]){if(n==='小宇'&&s.yuOut)continue;
+   if(hit(p,x,250,330,28)){if(s.spoke[n])s.reply={i,t:s.t};else{s.spoke[n]=1;s.reply={i,t:s.t,first:1};}return;}}},
+ up(s){s.hold=false;}};
+
+const LV2=[LV3[0],RULES,LV3[1],WRONG,GROUP];
+
+/* ---------- 遊戲流程 ---------- */
+const SERIES=[
+  {no:'第一系列',name:'校園日常篇',levels:LV1,mode:'air',tag:'10 題・看懂氣氛，做出不尷尬的反應'},
+  {no:'第二系列',name:'將心比心篇',levels:LV2,mode:'demo',tag:'5 題・先體驗、再猜心，最後才行動'}];
+const MARK={p:'○',o:'△',f:'✕'},PTS={p:10,o:5,f:0};
+const STAMPS={air:{p:'讚',o:'還行',f:'白目'},heart:{p:'暖心',o:'再想想',f:'傷到人了'},demo:{p:'開心',o:'還好',f:'難過'}};
+const RANKS=[[90,'全班的空氣清淨機','有你在的地方就不會尷尬，老師都想讓你當班長。'],
+  [70,'模範生','大部分場合都很得體，偶爾慢半拍。'],
+  [50,'普通同學','有時讀得懂，有時讀不懂，很正常。'],
+  [30,'有點白目','同學們常常默默地看著你。'],
+  [0,'空氣是什麼？可以吃嗎？','你活出了自己的樣子。']];
+const HRANKS=[[8,'將心比心小達人','每一次都先想到別人的感受，大家跟你在一起很安心。'],
+  [6,'貼心的同學','大部分時候，你都很照顧別人的心情。'],
+  [4,'正在練習的同學','有時候會忘記別人的感受，多練習就會越來越好。'],
+  [0,'先停下來想一想','說話或行動之前，先想想：「如果我是他，會有什麼感覺？」']];
+let ser=null,LV=[],idx=0,results=[],s=null,phase='title',token=0,last=0;
+const ov=$('ov'),chs=$('choices');
+
+function end(g,m,d=1.1,beats){if(!s||s.locked)return;s.locked=true;hideChoices();s.pend={g,m,at:s.t+d,beats:beats||null};}
+function showChoices(q,list){chs.innerHTML=`<p class="cq">${q}</p>`+list.map(c=>`<button class="choice" data-k="${c.k}">${c.t}</button>`).join('');chs.hidden=false;}
+function hideChoices(){chs.hidden=true;chs.innerHTML='';}
+chs.addEventListener('click',e=>{const b=e.target.closest('[data-k]');if(!b||phase!=='play'||!s||s.locked)return;s.L.choose(s,b.dataset.k);});
+function renderPips(){const p=$('pips');p.hidden=!LV.length;p.style.gridTemplateColumns=`repeat(${LV.length||1},20px)`;
+  p.innerHTML=LV.map((L,i)=>{const r=results[i];
+  return `<span class="pip${i===idx&&phase!=='final'?' cur':''}${r?' g-'+r.g:''}">${r?MARK[r.g]:''}</span>`;}).join('');}
+function go(i){idx=i;const L=LV[i];hideChoices();$('back').hidden=false;s={t:0,L,locked:false,pend:null,beat:0,bt:0};L.setup(s);phase='intro';
+  $('count').textContent=`${ser.name}｜第 ${i+1} 題 / 共 ${LV.length} 題`;$('ltitle').textContent=L.title;$('hint').textContent=L.hint;renderPips();
+  ov.innerHTML=`<p class="q">${ser.name}・第 ${i+1} 題</p><h2 class="lt">${L.title}</h2><p class="desc">${L.hint}</p>`;ov.hidden=false;
+  const tk=++token;setTimeout(()=>{if(tk===token&&phase==='intro')play();},1500);}
+function play(){if(phase!=='intro')return;phase='play';ov.hidden=true;}
+function swapStart(){phase='swap';s.beat=0;s.bt=0;$('hint').textContent='點一下畫面，繼續看下去';}
+function nextBeat(){if(s.bt<.6)return;if(s.beat+1<s.pend.beats.length){s.beat++;s.bt=0;}else showResult();}
+function showResult(){phase='result';const{g,m,beats}=s.pend,L=s.L;
+  results[idx]={g,m,title:L.title,thought:beats?beats[0].name+'：「'+beats[0].thought+'」':''};renderPips();$('hint').textContent=L.hint;
+  const word=STAMPS[ser.mode][g],lastQ=idx===LV.length-1;
+  ov.innerHTML=`${ser.mode==='demo'&&beats?`<p class="q">${beats[0].name}的心情</p>`:''}<div class="stamp ${g}" style="font-size:${word.length>2?20:word.length>1?28:34}px">${word}</div><p class="msg">${m}</p>
+   ${L.discuss?`<div class="disc" id="disc" hidden><b>討論卡</b>${L.discuss}</div>`:''}
+   <div class="row">${L.discuss?'<button class="btn ghost" data-act="disc">討論卡</button>':''}<button class="btn" id="next" data-act="next">${lastQ?'看成績單':'下一題'}</button></div>`;
+  ov.hidden=false;$('next').focus({preventScroll:true});}
+function final(){phase='final';s=null;renderPips();hideChoices();
+  const again='<div class="row"><button class="btn" data-act="again">再玩一次</button><button class="btn ghost" data-act="menu">選其他系列</button></div>';
+  $('count').textContent=`${ser.name}｜成績單`;$('ltitle').textContent='放學了';
+  if(ser.mode==='air'){const pct=Math.round(results.reduce((a,r)=>a+PTS[r.g],0)/(LV.length*10)*100);
+    const[,rank,cm]=RANKS.find(r=>pct>=r[0]);$('hint').textContent='○ 讀懂空氣　△ 差一點　✕ 白目';
+    ov.innerHTML=`<p class="q">空氣讀取率</p><div class="score">${pct}<small>%</small></div><h2 class="rank">${rank}</h2><p class="desc">${cm}</p>
+     <ul class="list">${results.map(r=>`<li class="${r.g}"><b>${MARK[r.g]}</b><span>${r.title}</span></li>`).join('')}</ul>${again}`;}
+  else if(ser.mode==='demo'){$('hint').textContent='○ 開心　△ 還好　✕ 難過';const n=results.filter(r=>r.g==='p').length;
+    ov.innerHTML=`<p class="q">讓對方心情變好</p><div class="score">${n}<small> / ${LV.length}</small></div><h2 class="rank">回顧大家的心裡話</h2>
+     <ul class="list wide">${results.map(r=>`<li class="${r.g}"><b>${MARK[r.g]}</b><span>${r.title}<i>${r.thought}</i></span></li>`).join('')}</ul>${again}`;}
+  else{const n=results.filter(r=>r.g==='p').length;const[,rank,cm]=HRANKS.find(r=>n>=r[0]);
+    $('hint').textContent='○ 暖心　△ 再想想　✕ 傷到人了';
+    ov.innerHTML=`<p class="q">暖心選擇</p><div class="score">${n}<small> / ${LV.length}</small></div><h2 class="rank">${rank}</h2><p class="desc">${cm}</p>
+     <p class="q">回顧大家的心裡話</p>
+     <ul class="list wide">${results.map(r=>`<li class="${r.g}"><b>${MARK[r.g]}</b><span>${r.title}<i>${r.thought}</i></span></li>`).join('')}</ul>${again}`;}
+  ov.hidden=false;ov.scrollTop=0;}
+function title(){phase='title';s=null;ser=null;LV=[];results=[];hideChoices();token++;$('back').hidden=true;
+  $('count').textContent='讀空氣';$('ltitle').textContent='選擇系列';$('hint').textContent='選一個系列開始';renderPips();
+  ov.innerHTML=`<h2 class="big">讀空氣</h2><p class="desc">紅色的小人是你。看懂氣氛，也看見別人的心情。</p>
+   <div class="series-list">${SERIES.map((x,i)=>`<button class="series" data-act="series" data-i="${i}"><span class="no">${x.no}</span><b>${x.name}</b><span class="tag">${x.tag}</span></button>`).join('')}</div>`;
+  ov.hidden=false;}
+
+ov.addEventListener('click',e=>{const b=e.target.closest('[data-act]');
+  if(b){const a=b.dataset.act;
+    if(a==='series'){ser=SERIES[+b.dataset.i];LV=ser.levels;results=[];delete mem.mei;go(0);}
+    else if(a==='again'){results=[];delete mem.mei;go(0);}
+    else if(a==='menu')title();
+    else if(a==='disc'){const d=$('disc');d.hidden=!d.hidden;b.textContent=d.hidden?'討論卡':'收起討論卡';}
+    else if(a==='next'){idx+1<LV.length?go(idx+1):final();}
+    return;}
+  if(phase==='intro')play();});
+
+$('back').addEventListener('click',title);
+function pos(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width*W,y:(e.clientY-r.top)/r.height*H};}
+cv.addEventListener('pointerdown',e=>{if(phase==='swap'){nextBeat();return;}
+  if(phase==='play'&&s&&s.rv){if(s.rv.bt>1){const f=s.rv.done;s.rv=null;$('hint').textContent=s.L.hint;f();}return;}
+  if(phase!=='play'||!s||s.locked)return;try{cv.setPointerCapture(e.pointerId);}catch(_){}s.L.down&&s.L.down(s,pos(e));});
+cv.addEventListener('pointermove',e=>{if(phase==='play'&&s&&s.L.move)s.L.move(s,pos(e));});
+cv.addEventListener('pointerup',e=>{if(phase==='play'&&s&&s.L.up)s.L.up(s,pos(e));});
+cv.addEventListener('pointercancel',e=>{if(phase==='play'&&s&&s.L.up)s.L.up(s,pos(e));});
+document.addEventListener('keydown',e=>{if(phase==='swap'&&(e.key==='Enter'||e.key===' ')){e.preventDefault();nextBeat();}});
+
+function drawSwap(){drawReveal(s.pend.beats[s.beat],s.bt);}
+function drawReveal(b,bt){const a=Math.min(1,bt/.3),k=1-Math.pow(1-clamp(bt/1.4,0,1),3);
+  ctx.save();ctx.globalAlpha=a*.84;ctx.fillStyle=C.paper;ctx.beginPath();ctx.rect(0,0,W,H);ctx.arc(b.x,b.y+20,54,0,7);ctx.fill('evenodd');
+  ctx.globalAlpha=a;ctx.strokeStyle=C.red;ctx.lineWidth=2;ctx.setLineDash([6,5]);ctx.beginPath();ctx.arc(b.x,b.y+20,54,0,7);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle=C.red;roundRect(14,12,W-28,34,6);ctx.fill();
+  ctx.fillStyle=C.paper;ctx.font=`16px ${FONT}`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(b.banner||`換位思考｜${b.name}的心裡話`,W/2,30);
+  if(b.cap)mark(W/2,64,b.cap,{size:14,muted:!b.cap2,me:!!b.cap2});if(b.cap2)mark(W/2,86,b.cap2,{size:13,muted:1});
+  ctx.font=`15px ${FONT}`;const lines=wrap(b.thought,200),lw=Math.max(...lines.map(l=>ctx.measureText(l).width));
+  const w=lw+28,h=lines.length*22+18,bx=clamp(b.x-w/2,10,W-w-10);
+  const above=b.y-44-h>=(b.cap2?100:78),by=above?b.y-44-h:b.y+84;
+  ctx.fillStyle=C.paper;ctx.strokeStyle=C.ink;ctx.lineWidth=2;ctx.setLineDash([5,4]);roundRect(bx,by,w,h,14);ctx.fill();ctx.stroke();ctx.setLineDash([]);
+  const ty=above?by+h:by;[[.35,5],[.7,3]].forEach(([f,r])=>{ctx.beginPath();ctx.arc(lerp(clamp(b.x,bx+20,bx+w-20),b.x,f),lerp(ty,above?b.y-14:b.y+14,f),r,0,7);ctx.fill();ctx.stroke();});
+  ctx.fillStyle=C.ink;lines.forEach((l,i)=>ctx.fillText(l,bx+w/2,by+20+i*22));
+  ctx.restore();ctx.save();ctx.globalAlpha=a;ctx.fillStyle=C.paper;ctx.fillRect(14,H-74,W-28,62);ctx.restore();
+  meter(30,H-46,W-60,lerp(b.from,b.to,k),`${b.name}的心情`,1);
+  if(bt>1)mark(W/2,H-16,'點一下繼續 ▸',{size:12,muted:1});}
+
+function titleScene(){floor();board();person(70,FL,{s:1.15,glasses:1,face:'right'});
+  [175,240,305].forEach((x,i)=>{const h=person(x,SEAT,{seated:1,face:'left',me:i===1});desk(x);if(i!==1)mark(h.x,h.y-22,'…');});}
+function frame(now){const dt=Math.min(.05,last?(now-last)/1000:0);last=now;readColors();
+  if(s&&s.rv)s.rv.bt+=dt;
+  else if(s&&(phase==='play'||phase==='result')){s.t+=dt;s.L.update&&s.L.update(s,dt);
+    if(phase==='play'){if(!s.locked&&s.L.time&&s.t>=s.L.time){const r=s.L.timeout(s);end(r[0],r[1],r[2],r[3]);}
+      if(s.pend&&s.t>=s.pend.at){s.pend.beats?swapStart():showResult();}}}
+  if(phase==='swap'&&s){s.bt+=dt;if(s.bt>7)nextBeat();}
+  const d=cv.width/W;ctx.setTransform(d,0,0,cv.height/H,0,0);bg();
+  if(s){s.L.draw(s);if(s.rv)drawReveal(s.rv.b,s.rv.bt);if(phase==='swap')drawSwap();}else titleScene();
+  requestAnimationFrame(frame);}
+title();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
